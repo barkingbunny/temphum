@@ -9,7 +9,8 @@
 #define MODULE_PERIPHERALS_H_
 
 #define BUT_SCAN_PERIOD 500 //ms
-#define BACKLITE_TIMEOUT 30000 //30s
+//#define BACKLITE_TIMEOUT 30000 //30s
+#define BACKLITE_TIMEOUT 120000 //120s
 
 typedef enum {	BUT_NONE,
 				BUT_1,

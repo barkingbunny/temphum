@@ -232,7 +232,6 @@ void character(uint8_t x, uint8_t y, char c){
 	unsigned char z,w;
 
 
-	w=font[1];
 	if ((c < 31) || (c > 127)){ return;}   // test char range
 	// read font parameter from start of array
 	offset = font[0];                    // bytes / char
@@ -248,20 +247,24 @@ void character(uint8_t x, uint8_t y, char c){
 	}
 	zeichen = &font[((c -32) * offset) + 4]; // start of char bitmap
 
-	w=font[0];				// width of actual char just for FONT5x
+	w=font[0]*magnit;				// width of actual char just for FONT5x
 	// construct the char into the buffer
-	for (i=0; i<(magnit*hor); i++) {   //  horz line
-	for (j=0; j<(magnit*vert); j++) {  //  vert line
+	for (i=0; i<(hor*magnit); i++) {   //  horz line
+	for (j=0; j<(vert*magnit); j++) {  //  vert line
 
-			z =  zeichen[bpl * i + ((j & 0xF8) >> 3)];
-			b = 1 << (j & 0x07);
-			magnit_count = magnit-1;
-			while (magnit_count<magnit){
+			z =  zeichen[bpl * (i/magnit) + (((j/magnit) & 0xF8) >> 3)];
+			b = 1 << (j/magnit & 0x07);
+			magnit_count = 1;
+			for(;;){
 				if (( z & b ) == 0x00) {
 					pixel(x+i,y+j,0);
 				} else {
 					pixel(x+i,y+j,1);
 				} //else
+				if(magnit_count>=magnit){
+					break;
+				}
+				j++;
 				magnit_count++;
 			}
 
@@ -271,7 +274,7 @@ void character(uint8_t x, uint8_t y, char c){
 	char_x += w;
 	if(char_x >= (width() - hor)) {
 		char_x = 0;
-		char_y = char_y + vert;
+		char_y = char_y + vert*magnit;
 		if (char_y >= height() - font[2]){
 			char_y = 0;
 		}

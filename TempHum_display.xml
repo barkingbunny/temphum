@@ -4,7 +4,7 @@
     <name>TempHum_display</name>
     <mcuId>stm32l072rbtx</mcuId>
     <dbgIF>SWD</dbgIF>
-    <dbgDEV>ST-LinkV2-1</dbgDEV>
     <dbgDEV>ST-LinkV2</dbgDEV>
+    <dbgDEV>ST-LinkV2-1</dbgDEV>
   </board>
 </targetDefinitions>

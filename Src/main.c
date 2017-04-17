@@ -139,7 +139,7 @@ int main(void)
 	lcd_setCharPos(0,0);
 	lcd_printString("Initialization of unit...\r");
 	lcd_printString("Reading Temp_Hum\r");
-	lcd_printString( "SW v 0.11");
+	lcd_printString( "SW v 0.13");
 	HAL_TIM_Encoder_Start(&htim22,TIM_CHANNEL_1);
 
 	htim22.Instance->EGR = 1;           // Generate an update event
@@ -155,6 +155,10 @@ int main(void)
 	//init timers
 	led_compare = fill_comparer(LED_PERIODE);
 	measure_compare = fill_comparer(MEASURE_PERIODE);
+	//
+	HAL_GPIO_WritePin(D_LCD_LIGHT_GPIO_Port,D_LCD_LIGHT_Pin,GPIO_PIN_SET);
+	ledka = 10;
+	//
 
 	/* USER CODE END 2 */
 
@@ -253,7 +257,7 @@ int main(void)
 		}
 		case BUT_ENC:
 		{
-			show = debug;
+			//show = debug;
 
 
 			/*count1=htim22.Instance->CNT;
@@ -293,9 +297,9 @@ int main(void)
 			 */
 			// BME280 sensor
 
-			lcd_setCharPos(2,1);
+			lcd_setCharPos(2,4);
 			char_magnitude(2);
-			snprintf(buffer_s, 12, "Temp   %d.%02d C ",temperature/100,temperature%100);
+			snprintf(buffer_s, 12, "%d.%02dC",temperature/100,temperature%100);
 			lcd_printString(buffer_s);
 			char_magnitude(1);
 
