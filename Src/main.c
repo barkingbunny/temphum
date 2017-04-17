@@ -109,9 +109,13 @@ int main(void)
 	uint32_t presure = 0;
 	int16_t count1;
 	char aShowTime[50] = {0};
+//debug
+	uint8_t beta2_part=12;
+	Bool alfa_part=0, beta_part=0;
+//debug
 
 	//timeouts
-	uint32_t backlite_compare, measure_compare, led_compare;
+	uint32_t backlite_compare, measure_compare, led_compare,time_compare;
 
 	/* USER CODE END 1 */
 
@@ -131,7 +135,7 @@ int main(void)
 	MX_I2C1_Init();
 	MX_USB_DEVICE_Init();
 	MX_RTC_Init();
-//	MX_ADC_Init();
+	//	MX_ADC_Init();
 
 	/* USER CODE BEGIN 2 */
 	lcd12864_init(&hspi1);
@@ -139,15 +143,15 @@ int main(void)
 	lcd_setCharPos(0,0);
 	lcd_printString("Initialization of unit...\r");
 	lcd_printString("Reading Temp_Hum\r");
-	lcd_printString( "SW v 0.13");
+	lcd_printString( "SW v 0.14");
 	HAL_TIM_Encoder_Start(&htim22,TIM_CHANNEL_1);
 
 	htim22.Instance->EGR = 1;           // Generate an update event
 	htim22.Instance->CR1 = 1;           // Enable the counter
 
-	BME280_init(&hi2c1,DEFAULT_SLAVE_ADDRESS); // initialisation of temp/humid sensor BOSH
+	BME280_init(&hi2c1,DEFAULT_SLAVE_ADDRESS); // initialization of temp/humid sensor BOSH
 
-	HAL_Delay(700);
+	HAL_Delay(1700);
 	lcd_clear();
 
 	current_state = MEASURING;
@@ -155,9 +159,13 @@ int main(void)
 	//init timers
 	led_compare = fill_comparer(LED_PERIODE);
 	measure_compare = fill_comparer(MEASURE_PERIODE);
+	time_compare = fill_comparer(TIME_PERIODE);
 	//
 	HAL_GPIO_WritePin(D_LCD_LIGHT_GPIO_Port,D_LCD_LIGHT_Pin,GPIO_PIN_SET);
+	backlite_compare = fill_comparer(BACKLITE_TIMEOUT);
 	ledka = 10;
+	snprintf(buffer_usb, 15, "INITIALISATION");
+				CDC_Transmit_FS(buffer_usb,15);
 	//
 
 	/* USER CODE END 2 */
@@ -170,7 +178,7 @@ int main(void)
 		case SLEEP:
 		{
 
-		/*	HAL_RTC_SetAlarm_IT(&hrtc, alarm, RTC_FORMAT_BIN);
+			/*	HAL_RTC_SetAlarm_IT(&hrtc, alarm, RTC_FORMAT_BIN);
 
 			BSP_PB_Init(BUTTON_KEY, BUTTON_MODE_EXTI);
 
@@ -186,7 +194,7 @@ int main(void)
 			    //* Resume Tick interrupt if disabled prior to sleep mode entry
 			    HAL_ResumeTick();
 
-				*/
+			 */
 			break;
 		}
 		case IDLE:
@@ -206,87 +214,26 @@ int main(void)
 
 			measure_compare = fill_comparer(MEASURE_PERIODE);
 			break;
+		case TIME:
+		{
+			show = time;
+			time_compare = fill_comparer(TIME_PERIODE);
+			break;
+		}
 
 		default:
 			break;
 		}
 		}// switch CURRENT STATE
 
-		if(measure_compare <= HAL_GetTick()) //measure after defined periode.
-		{
-			current_state = MEASURING;
-		}
-		//READ KEYBOARD
-		pushed_button = BUT_NONE;
-
-		//if(isTimeout(TIM_BUT_SCAN))
-		if( (cycle%but_delay) == 0 ) //every delay time
-		{
-			pushed_button = checkButtons();
-			but_delay=1;
-			//setTimeout(BUT_SCAN_PERIOD,TIM_BUT_SCAN);
-		}
-		if(pushed_button != BUT_NONE) // any buttone pushed?
-		{
-			HAL_GPIO_WritePin(D_LCD_LIGHT_GPIO_Port,D_LCD_LIGHT_Pin,GPIO_PIN_SET);
-			but_delay=BUT_DELAY;
-			backlite_compare = fill_comparer(BACKLITE_TIMEOUT);
-		}
-		// process what to do when button was pushed.
-		switch (pushed_button){
-		case BUT_1:
-		{
-			ledka = 10;
-			Led1Clear;
-			Led2Clear;
-			HAL_GPIO_WritePin(D_LCD_LIGHT_GPIO_Port,D_LCD_LIGHT_Pin,GPIO_PIN_RESET);
-			lcd_clear();
-			current_state = MEASURING;
-			break;
-		}
-		case BUT_2:
-		{
-			char buffer_usbbbb[] ="hello usb ";
-			snprintf(buffer_usb, 15, "SW2, ahha123456");
-			CDC_Transmit_FS(buffer_usb,15);
-			if((ledka & 0xFF) ==0x01) ledka = LED1;
-			else
-				ledka=LED2;
-			break;
-
-		}
-		case BUT_ENC:
-		{
-			//show = debug;
-
-
-			/*count1=htim22.Instance->CNT;
-    	  			  if ((count1) <= (ENCODER_HALF-T_led)){
-    	  				  T_led = 1;
-    	  			  }
-    	  			  else{
-    	  				  T_led += (count1-ENCODER_HALF);
-    	  			  }
-
-    	  			  htim22.Instance->CNT=ENCODER_HALF;
-			 */
-			break;
-		}
-
-		} // switch pushed button
-		//MENU
-		if (led_compare<=HAL_GetTick()){
-			togleLED(ledka);
-			led_compare=fill_comparer(LED_PERIODE);
-		}//if
 
 		/*SCREEN*/
-
 		switch (show){
 
 		case blind:
 		{
 			lcd_clear();
+			show = idle;
 			break;
 		}
 		case temp:
@@ -299,19 +246,36 @@ int main(void)
 
 			lcd_setCharPos(2,4);
 			char_magnitude(2);
-			snprintf(buffer_s, 12, "%d.%02dC",temperature/100,temperature%100);
+			snprintf(buffer_s, 12, "%d.%02d C",temperature/100,temperature%100);
 			lcd_printString(buffer_s);
 			char_magnitude(1);
 
 			lcd_setCharPos(4,1);
-			snprintf(buffer_s, 15, "Hum    %d.%02d%  ",humid/1024,humid%1024);
+			snprintf(buffer_s, 16, "Hum    %d.%02d \%",humid/1024,humid%1024);
 			lcd_printString(buffer_s);
 
 			lcd_setCharPos(6,1);
-			snprintf(buffer_s, 15, "Pres %d.%02d hpal ",presure/100,presure%100);
+			snprintf(buffer_s, 18, "Pres %d.%02d hpal",presure/100,presure%100);
 			lcd_printString(buffer_s);
 
-			show = time;
+			//debug
+			snprintf(buffer_usb, 15, "temp %d \r\n", temperature);
+			CDC_Transmit_FS(buffer_usb,15);
+
+
+			lcd_setCharPos(1,14);
+			if (alfa_part){
+				lcd_printString("X");
+				alfa_part = FALSE;
+			}
+			else{
+				lcd_printString("_");
+				alfa_part = TRUE;
+			}
+
+			//debug
+
+			show = idle;
 			break;
 		}
 		case time:
@@ -320,10 +284,33 @@ int main(void)
 			lcd_setCharPos(7,10);
 			lcd_printString(aShowTime);
 			RTC_TimeShow(&hrtc,aShowTime);
-			lcd_setCharPos(0,12);
+			//lcd_setCharPos(0,12);
+			lcd_setCharPos(0,1);
 			lcd_printString(aShowTime);
+
+			//debug
+			lcd_setCharPos(0,beta2_part);
+			if (beta_part){
+				lcd_printString("T");
+				beta_part = FALSE;
+			}
+			else {
+				lcd_printString("_");
+				beta_part = TRUE;
+			}
+			beta2_part++;
+			if (beta2_part>20){
+				beta2_part=12;
+			}
+			//debug
+
+			show = idle;
 			break;
 		}
+		case idle:
+				{
+					break;
+				}
 		case debug:
 		{
 			lcd_clear();
@@ -360,13 +347,77 @@ int main(void)
 			lcd_setCharPos(1,1);
 			lcd_printString("DEFAULT   DEFFFF" );
 		}
-
 		}// switch show
 
-		if (backlite_compare <= HAL_GetTick()) // shut down the backlite
+/* *------ TIME ELAPSING CHECK -------* */
+
+		if(measure_compare <= HAL_GetTick()) //measure after defined periode.
+		{
+			current_state = MEASURING;
+		}
+
+		if(time_compare <= HAL_GetTick()) //measure after defined periode.
+		{
+			if (current_state>TIME)
+				current_state = TIME;
+		}
+
+		if (led_compare<=HAL_GetTick()){
+			togleLED(ledka);
+			led_compare=fill_comparer(LED_PERIODE);
+		}//if BLIK LEDka
+
+		if (backlite_compare <= HAL_GetTick()) // shut down the backlight
 		{
 			HAL_GPIO_WritePin(D_LCD_LIGHT_GPIO_Port,D_LCD_LIGHT_Pin,GPIO_PIN_RESET);
 		}
+
+		/* -- READ KEYBOARD --- */
+
+		pushed_button = BUT_NONE;
+		//if(isTimeout(TIM_BUT_SCAN))
+		if( (cycle%but_delay) == 0 ) //every delay time
+		{
+			pushed_button = checkButtons();
+			but_delay=1;
+			//setTimeout(BUT_SCAN_PERIOD,TIM_BUT_SCAN);
+		}
+		if(pushed_button != BUT_NONE) // any buttone pushed?
+		{
+			HAL_GPIO_WritePin(D_LCD_LIGHT_GPIO_Port,D_LCD_LIGHT_Pin,GPIO_PIN_SET);
+			but_delay=BUT_DELAY;
+			backlite_compare = fill_comparer(BACKLITE_TIMEOUT);
+		}
+
+		// -- BUTTON PROCCESS
+		switch (pushed_button){
+		case BUT_1:
+		{
+			ledka = 10;
+			Led1Clear;
+			Led2Clear;
+			HAL_GPIO_WritePin(D_LCD_LIGHT_GPIO_Port,D_LCD_LIGHT_Pin,GPIO_PIN_RESET);
+			lcd_clear();
+			current_state = MEASURING;
+			break;
+		}
+		case BUT_2:
+		{
+
+			snprintf(buffer_usb, 15, "SW2, ahha123456");
+			CDC_Transmit_FS(buffer_usb,15);
+			if((ledka & 0xFF) ==0x01) ledka = LED1;
+			else
+				ledka=LED2;
+			break;
+
+		}
+		case BUT_ENC:
+		{
+			//show = debug;
+			break;
+		}
+		} // switch pushed button
 
 		HAL_Delay(MAIN_LOOP);
 

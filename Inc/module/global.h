@@ -16,9 +16,10 @@ typedef enum {	MEASURING,
 				HEATING,
 				TEST,
 				MENUn,
-				IDLE,
 				TE_ERROR,
-				SLEEP
+				SLEEP,
+				TIME,
+				IDLE
 } States_loop;
 
 typedef enum  	{
@@ -27,7 +28,8 @@ typedef enum  	{
 	temp,
 	def,
 	debug,
-	time
+	time,
+	idle
 } Screen;
 
 typedef struct {
@@ -43,8 +45,9 @@ typedef struct {
 
 #define BUT_DELAY 100		// in milisecond
 #define MAIN_LOOP 25		// in milisecond
-#define MEASURE_PERIODE 5000 // every 1 secondn
+#define MEASURE_PERIODE 5000 // every 5 secondn
 #define LED_PERIODE 500 //
+#define TIME_PERIODE 400
 
 extern Flags_main flags;
 

@@ -10,7 +10,7 @@
 
 #define BUT_SCAN_PERIOD 500 //ms
 //#define BACKLITE_TIMEOUT 30000 //30s
-#define BACKLITE_TIMEOUT 120000 //120s
+#define BACKLITE_TIMEOUT 60000 //60s
 
 typedef enum {	BUT_NONE,
 				BUT_1,
