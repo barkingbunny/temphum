@@ -40,7 +40,8 @@
  *
  ******************************************************************************
  */
-/**This program is just for display the temperature and humidity during the day. Nothing more.
+/**
+ * Only read the Temp and Humidity + voltage
  *
  */
 /* Includes ------------------------------------------------------------------*/
@@ -70,7 +71,6 @@
 
 /* USER CODE BEGIN PV */
 /* Private variables ---------------------------------------------------------*/
-#define LED LED1
 
 static States_loop current_state;
 static Screen show;
@@ -100,22 +100,23 @@ int main(void)
 	/* USER CODE BEGIN 1 */
 	char buffer_s [32];
 	char buffer_usb [32];
-	char cycle=0;
+
 	uint16_t T_led=20;
-	uint8_t but_delay=BUT_DELAY;
-	uint8_t ledka=LED;
+
 	uint32_t temperature=-20000;
 	uint32_t humid = -5;
 	uint32_t presure = 0;
+	uint32_t actual_HALtick=0;
+	uint32_t InputVoltage=0;
 	int16_t count1;
 	char aShowTime[50] = {0};
-//debug
+	//debug
 	uint8_t beta2_part=12;
-	Bool alfa_part=0, beta_part=0;
-//debug
+	Bool alfa_part=0, beta_part=0, show_time=TRUE;
+	//debug
 
 	//timeouts
-	uint32_t backlite_compare, measure_compare, led_compare,time_compare;
+	uint32_t backlite_compare, measure_compare, led_compare,time_compare, button_compare;
 
 	/* USER CODE END 1 */
 
@@ -131,19 +132,19 @@ int main(void)
 	MX_GPIO_Init();
 	MX_SPI1_Init();
 	MX_TIM22_Init();
-	MX_TIM21_Init();
+//	MX_TIM21_Init();
 	MX_I2C1_Init();
 	MX_USB_DEVICE_Init();
 	MX_RTC_Init();
-	//	MX_ADC_Init();
+	MX_ADC_Init();
 
 	/* USER CODE BEGIN 2 */
 	lcd12864_init(&hspi1);
 	line(0,60,110,60,1);
 	lcd_setCharPos(0,0);
-	lcd_printString("Initialization of unit...\r");
+	lcd_printString("Initialization unit\r");
 	lcd_printString("Reading Temp_Hum\r");
-	lcd_printString( "SW v 0.14");
+	lcd_printString( "SW v 0.172");
 	HAL_TIM_Encoder_Start(&htim22,TIM_CHANNEL_1);
 
 	htim22.Instance->EGR = 1;           // Generate an update event
@@ -155,18 +156,22 @@ int main(void)
 	lcd_clear();
 
 	current_state = MEASURING;
-	show=temp;
+	show=desktop;
 	//init timers
 	led_compare = fill_comparer(LED_PERIODE);
 	measure_compare = fill_comparer(MEASURE_PERIODE);
 	time_compare = fill_comparer(TIME_PERIODE);
-	//
+	button_compare = fill_comparer(BUT_DELAY);
+
 	HAL_GPIO_WritePin(D_LCD_LIGHT_GPIO_Port,D_LCD_LIGHT_Pin,GPIO_PIN_SET);
 	backlite_compare = fill_comparer(BACKLITE_TIMEOUT);
-	ledka = 10;
-	snprintf(buffer_usb, 15, "INITIALISATION");
-				CDC_Transmit_FS(buffer_usb,15);
-	//
+// NEW ADDED
+	/*##- 4- Start the conversion process #######################################*/
+	  if (HAL_ADC_Start(&hadc) != HAL_OK)
+	  {
+	    /* Start Conversation Error */
+	    Error_Handler();
+	  }
 
 	/* USER CODE END 2 */
 
@@ -178,23 +183,63 @@ int main(void)
 		case SLEEP:
 		{
 
-			/*	HAL_RTC_SetAlarm_IT(&hrtc, alarm, RTC_FORMAT_BIN);
+			snprintf(buffer_usb, 15, "SLEEP \n\r");
+			CDC_Transmit_FS(buffer_usb,15);
+CDC_Transmit_FS(aShowTime,15);
+			snprintf(buffer_usb, 15, "\n\r %s \n\r", aShowTime);
+			CDC_Transmit_FS(buffer_usb,14);
 
-			BSP_PB_Init(BUTTON_KEY, BUTTON_MODE_EXTI);
+/*			RTC_TimeShow(&hrtc,aShowTime);
+			snprintf(buffer_usb, 15, "%s \n\r", aShowTime);
+			CDC_Transmit_FS(buffer_usb,13);
+*/
+			/* Disable all used wakeup sources*/
+			HAL_RTCEx_DeactivateWakeUpTimer(&hrtc);
+			/* Re-enable all used wakeup sources*/
+			/* ## Setting the Wake up time ############################################*/
+			/*  RTC Wakeup Interrupt Generation:
+		  				    Wakeup Time Base = (RTC_WAKEUPCLOCK_RTCCLK_DIV /(LSI))
+		  				    Wakeup Time = Wakeup Time Base * WakeUpCounter
+		  				      = (RTC_WAKEUPCLOCK_RTCCLK_DIV /(LSI)) * WakeUpCounter
+		  				      ==> WakeUpCounter = Wakeup Time / Wakeup Time Base
 
-			    //*Suspend Tick increment to prevent wakeup by Systick interrupt.Otherwise the Systick interrupt will wake up the device within 1ms (HAL time base)
-			    HAL_SuspendTick();
+		  				    To configure the wake up timer to 4s the WakeUpCounter is set to 0x1FFF:
+		  				    RTC_WAKEUPCLOCK_RTCCLK_DIV = RTCCLK_Div16 = 16
+		  				    Wakeup Time Base = 16 /(~39.000KHz) = ~0,410 ms
+		  				    Wakeup Time = ~4s = 0,410ms  * WakeUpCounter
+		  				      ==> WakeUpCounter = ~4s/0,410ms = 9750 = 0x2616 */
 
-			    // Enable Power Control clock
-			    __HAL_RCC_PWR_CLK_ENABLE();
+			if ( HAL_RTCEx_SetWakeUpTimer_IT(&hrtc, 9250, RTC_WAKEUPCLOCK_RTCCLK_DIV16) != HAL_OK)
+			{
+				lcd_setCharPos(2,1);
+				lcd_printString(" ERR - no wake set" );
+				HAL_Delay(2500);
+			}
+			/* Clear all related wakeup flags */
+			__HAL_PWR_CLEAR_FLAG(PWR_FLAG_WU);
 
-			    // Enter Sleep Mode , wake up is done once User push-button is pressed
-			    HAL_PWR_EnterSLEEPMode(PWR_MAINREGULATOR_ON, PWR_SLEEPENTRY_WFI);
+			//*Suspend Tick increment to prevent wakeup by Systick interrupt.Otherwise the Systick interrupt will wake up the device within 1ms (HAL time base)
+			HAL_SuspendTick();
 
-			    //* Resume Tick interrupt if disabled prior to sleep mode entry
-			    HAL_ResumeTick();
+			// Enable Power Control clock
+			__HAL_RCC_PWR_CLK_ENABLE();
 
-			 */
+			// Enter Sleep Mode , wake up is done once User push-button is pressed
+			HAL_PWR_EnterSLEEPMode(PWR_MAINREGULATOR_ON, PWR_SLEEPENTRY_WFI);
+
+			//* Resume Tick interrupt if disabled prior to sleep mode entry
+			HAL_ResumeTick();
+
+
+			snprintf(buffer_usb, 15, "RESUME \n\r");
+			CDC_Transmit_FS(buffer_usb,10);
+			RTC_TimeShow(&hrtc,aShowTime);
+			CDC_Transmit_FS(aShowTime,15);
+			snprintf(buffer_usb, 15, "\n\r %s \n\r", aShowTime);
+			CDC_Transmit_FS(buffer_usb,14);
+
+			current_state = MEASURING;
+			show_time=TRUE;
 			break;
 		}
 		case IDLE:
@@ -208,26 +253,48 @@ int main(void)
 			humid=BME280_getHumidity();
 			presure=BME280_getPressure();
 
-			current_state = IDLE;
-			if (!flags.menu_running)
-				show = temp;
+			current_state = VOLTAGE;
+
+			flags.new_data_to_show=TRUE;
 
 			measure_compare = fill_comparer(MEASURE_PERIODE);
 			break;
-		case TIME:
+		case VOLTAGE:
+
 		{
-			show = time;
-			time_compare = fill_comparer(TIME_PERIODE);
+		    /*##- 5- Wait for the end of conversion #####################################*/
+		    /*  Before starting a new conversion, you need to check the current state of
+		         the peripheral; if it�s busy you need to wait for the end of current
+		         conversion before starting a new one.
+		         For simplicity reasons, this example is just waiting till the end of the
+		         conversion, but application may perform other tasks while conversion
+		         operation is ongoing. */
+		    HAL_ADC_PollForConversion(&hadc, 10);
+
+		    /* Check if the continous conversion of regular channel is finished */
+		    if ((HAL_ADC_GetState(&hadc) & HAL_ADC_STATE_REG_EOC) == HAL_ADC_STATE_REG_EOC)
+		    {
+		      /*##-6- Get the converted value of regular channel  ########################*/
+		      InputVoltage = HAL_ADC_GetValue(&hadc);
+		    }
+		  }
+
+		flags.new_data_to_show=TRUE;
+
+		current_state = SLEEP;
+			break;
+		case LOG:
+		{
+
 			break;
 		}
-
 		default:
 			break;
 		}
 		}// switch CURRENT STATE
 
 
-		/*SCREEN*/
+	/*SCREEN*/
 		switch (show){
 
 		case blind:
@@ -236,81 +303,88 @@ int main(void)
 			show = idle;
 			break;
 		}
-		case temp:
+		case desktop:
 		{
-			/*	  lcd_setCharPos(2,0);
-    		  snprintf(buffer_s, 25, "temp: %i.%02i%cC",temp_ds18b20/16,((temp_ds18b20%16)*6),0x7e );
-    		  lcd_printString(buffer_s);
-			 */
-			// BME280 sensor
+			if (flags.new_data_to_show==TRUE){
 
-			lcd_setCharPos(2,4);
-			char_magnitude(2);
-			snprintf(buffer_s, 12, "%d.%02d C",temperature/100,temperature%100);
-			lcd_printString(buffer_s);
-			char_magnitude(1);
+				// BME280 sensor
 
-			lcd_setCharPos(4,1);
-			snprintf(buffer_s, 16, "Hum    %d.%02d \%",humid/1024,humid%1024);
-			lcd_printString(buffer_s);
+				lcd_setCharPos(1,4);
+				char_magnitude(2);
+				snprintf(buffer_s, 12, "%d.%02d C",temperature/100,temperature%100);
+				lcd_printString(buffer_s);
 
-			lcd_setCharPos(6,1);
-			snprintf(buffer_s, 18, "Pres %d.%02d hpal",presure/100,presure%100);
-			lcd_printString(buffer_s);
+				lcd_setCharPos(4,4);
+				snprintf(buffer_s, 14, "%d.%02d %%",(humid / 1024), humid%1024*100/1024);
+				lcd_printString(buffer_s);
+				char_magnitude(1);
 
-			//debug
-			snprintf(buffer_usb, 15, "temp %d \r\n", temperature);
-			CDC_Transmit_FS(buffer_usb,15);
+			/*	lcd_setCharPos(6,4);
+				snprintf(buffer_s, 18, "Pres %d.%02d hp",presure/100,presure%100);
+				lcd_printString(buffer_s);
+				*/
+				lcd_setCharPos(6,0);
+				snprintf(buffer_s, 20, "%d - %d.%02d V",InputVoltage,InputVoltage*66/2550,(InputVoltage*66%2550*100/255) );
+								lcd_printString(buffer_s);
 
 
-			lcd_setCharPos(1,14);
-			if (alfa_part){
-				lcd_printString("X");
-				alfa_part = FALSE;
+				flags.new_data_to_show=FALSE; // the data was showed.
+
+				//debug
+
+				lcd_setCharPos(2,20);
+				if (alfa_part){
+					lcd_printString("X");
+					alfa_part = FALSE;
+				}
+				else{
+					lcd_printString("_");
+					alfa_part = TRUE;
+				}
+				//debug
+
+			}// end if - new data to show
+			if (show_time){
+
+				RTC_DateShow(&hrtc,aShowTime);
+				lcd_setCharPos(7,10);
+				lcd_printString(aShowTime);
+				RTC_TimeShow(&hrtc,aShowTime);
+				//lcd_setCharPos(0,12);
+				lcd_setCharPos(0,1);
+				lcd_printString(aShowTime);
+
+				//debug
+				lcd_setCharPos(0,beta2_part);
+				if (beta_part){
+					lcd_printString("T");
+					beta_part = FALSE;
+				}
+				else {
+					lcd_printString("_");
+					beta_part = TRUE;
+				}
+				beta2_part++;
+				if (beta2_part>20){
+					beta2_part=12;
+				}
+				lcd_setCharPos(7,0);
+				snprintf(buffer_s, 18, "%d",hrtc.Instance->TR);
+				lcd_printString(buffer_s);
+
+				//debug
+				/* end of the time part - new timer set.*/
+				time_compare = fill_comparer(TIME_PERIODE);
+				show_time = FALSE;
 			}
-			else{
-				lcd_printString("_");
-				alfa_part = TRUE;
-			}
 
-			//debug
 
-			show = idle;
-			break;
-		}
-		case time:
-		{
-			RTC_DateShow(&hrtc,aShowTime);
-			lcd_setCharPos(7,10);
-			lcd_printString(aShowTime);
-			RTC_TimeShow(&hrtc,aShowTime);
-			//lcd_setCharPos(0,12);
-			lcd_setCharPos(0,1);
-			lcd_printString(aShowTime);
-
-			//debug
-			lcd_setCharPos(0,beta2_part);
-			if (beta_part){
-				lcd_printString("T");
-				beta_part = FALSE;
-			}
-			else {
-				lcd_printString("_");
-				beta_part = TRUE;
-			}
-			beta2_part++;
-			if (beta2_part>20){
-				beta2_part=12;
-			}
-			//debug
-
-			show = idle;
 			break;
 		}
 		case idle:
-				{
-					break;
-				}
+		{
+			break;
+		}
 		case debug:
 		{
 			lcd_clear();
@@ -349,25 +423,24 @@ int main(void)
 		}
 		}// switch show
 
-/* *------ TIME ELAPSING CHECK -------* */
-
-		if(measure_compare <= HAL_GetTick()) //measure after defined periode.
+		/* *------ TIME ELAPSING CHECK -------* */
+		actual_HALtick = HAL_GetTick();
+		if(measure_compare <= actual_HALtick) //measure after defined periode.
 		{
 			current_state = MEASURING;
 		}
 
-		if(time_compare <= HAL_GetTick()) //measure after defined periode.
+		if(time_compare <= actual_HALtick) //measure after defined periode.
 		{
-			if (current_state>TIME)
-				current_state = TIME;
+			show_time = TRUE;
 		}
-
-		if (led_compare<=HAL_GetTick()){
-			togleLED(ledka);
+		/*
+		if (led_compare<=actual_HALtick){
+			togleLED(LED1);
 			led_compare=fill_comparer(LED_PERIODE);
 		}//if BLIK LEDka
-
-		if (backlite_compare <= HAL_GetTick()) // shut down the backlight
+		 */
+		if (backlite_compare <= actual_HALtick) // shut down the backlight
 		{
 			HAL_GPIO_WritePin(D_LCD_LIGHT_GPIO_Port,D_LCD_LIGHT_Pin,GPIO_PIN_RESET);
 		}
@@ -376,16 +449,16 @@ int main(void)
 
 		pushed_button = BUT_NONE;
 		//if(isTimeout(TIM_BUT_SCAN))
-		if( (cycle%but_delay) == 0 ) //every delay time
+		if(button_compare<=actual_HALtick) //every delay time
 		{
 			pushed_button = checkButtons();
-			but_delay=1;
-			//setTimeout(BUT_SCAN_PERIOD,TIM_BUT_SCAN);
+			button_compare = fill_comparer(BUT_DELAY);
+
 		}
-		if(pushed_button != BUT_NONE) // any buttone pushed?
+		if(pushed_button != BUT_NONE) // any button pushed?
 		{
 			HAL_GPIO_WritePin(D_LCD_LIGHT_GPIO_Port,D_LCD_LIGHT_Pin,GPIO_PIN_SET);
-			but_delay=BUT_DELAY;
+			button_compare = fill_comparer(BUT_DELAY*4); // 4 - zpodeni cteni pri stisknuti
 			backlite_compare = fill_comparer(BACKLITE_TIMEOUT);
 		}
 
@@ -393,24 +466,20 @@ int main(void)
 		switch (pushed_button){
 		case BUT_1:
 		{
-			ledka = 10;
+			led_compare = 0xffffffff;
 			Led1Clear;
 			Led2Clear;
 			HAL_GPIO_WritePin(D_LCD_LIGHT_GPIO_Port,D_LCD_LIGHT_Pin,GPIO_PIN_RESET);
 			lcd_clear();
-			current_state = MEASURING;
+			HAL_PWR_EnterSLEEPMode(PWR_MAINREGULATOR_ON, PWR_SLEEPENTRY_WFE);
 			break;
 		}
 		case BUT_2:
 		{
 
-			snprintf(buffer_usb, 15, "SW2, ahha123456");
-			CDC_Transmit_FS(buffer_usb,15);
-			if((ledka & 0xFF) ==0x01) ledka = LED1;
-			else
-				ledka=LED2;
-			break;
+			current_state = SLEEP;
 
+			break;
 		}
 		case BUT_ENC:
 		{
@@ -509,6 +578,8 @@ void Error_Handler(void)
 	/* User can add his own implementation to report the HAL error return state */
 	while(1)
 	{
+		togleLED(LED2);
+		HAL_Delay(500);
 	}
 	/* USER CODE END Error_Handler */
 }

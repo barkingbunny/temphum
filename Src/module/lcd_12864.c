@@ -278,7 +278,8 @@ void character(uint8_t x, uint8_t y, char c){
 		if (char_y >= height() - font[2]){
 			char_y = 0;
 		}
-		line_clear(char_y);
+		//zakomentovano - v pripade ze zapisu znak na konec radky, tak se maze dalsi - nechci
+	//	line_clear(char_y);
 	}
 }
 

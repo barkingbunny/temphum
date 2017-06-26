@@ -34,7 +34,8 @@ Src/module/Time.o: ../Src/module/Time.c \
  /home/jakub/workspace/eclipse/Termostat/TempHum_display/Drivers/STM32L0xx_HAL_Driver/Inc/stm32l0xx_hal_tim_ex.h \
  /home/jakub/workspace/eclipse/Termostat/TempHum_display/Drivers/STM32L0xx_HAL_Driver/Inc/stm32l0xx_hal_pcd.h \
  /home/jakub/workspace/eclipse/Termostat/TempHum_display/Drivers/STM32L0xx_HAL_Driver/Inc/stm32l0xx_hal_pcd_ex.h \
- /home/jakub/workspace/eclipse/Termostat/TempHum_display/Inc/module/global.h
+ /home/jakub/workspace/eclipse/Termostat/TempHum_display/Inc/module/global.h \
+ /home/jakub/workspace/eclipse/Termostat/TempHum_display/Inc/rtc.h
 
 /home/jakub/workspace/eclipse/Termostat/TempHum_display/Inc/tim.h:
 
@@ -107,3 +108,5 @@ Src/module/Time.o: ../Src/module/Time.c \
 /home/jakub/workspace/eclipse/Termostat/TempHum_display/Drivers/STM32L0xx_HAL_Driver/Inc/stm32l0xx_hal_pcd_ex.h:
 
 /home/jakub/workspace/eclipse/Termostat/TempHum_display/Inc/module/global.h:
+
+/home/jakub/workspace/eclipse/Termostat/TempHum_display/Inc/rtc.h:

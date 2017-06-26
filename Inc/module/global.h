@@ -11,7 +11,7 @@
 #include "stm32l0xx_hal.h"
 
 typedef enum {FALSE = 0u, TRUE = 1u} Bool;
-
+// the priority is selected by place in the list.
 typedef enum {	MEASURING,
 				HEATING,
 				TEST,
@@ -19,16 +19,16 @@ typedef enum {	MEASURING,
 				TE_ERROR,
 				SLEEP,
 				TIME,
-				IDLE
+				IDLE,
+				VOLTAGE,
+				LOG
 } States_loop;
 
 typedef enum  	{
 	menu,
 	blind,
-	temp,
-	def,
+	desktop,
 	debug,
-	time,
 	idle
 } Screen;
 
