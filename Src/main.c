@@ -42,7 +42,7 @@
  */
 /**
  * Only read the Temp and Humidity + voltage
- *
+ * Cahnge - SW will be updated with some other features.
  */
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
@@ -308,6 +308,7 @@ CDC_Transmit_FS(aShowTime,15);
 			if (flags.new_data_to_show==TRUE){
 
 				// BME280 sensor
+
 
 				lcd_setCharPos(1,4);
 				char_magnitude(2);
